@@ -1,21 +1,69 @@
+<!-- index.html（そのまま上書きしてOK） -->
 <!DOCTYPE html>
-<html lang="ja">
-<head>
+<html lang="ja"><head>
   <meta charset="utf-8">
-  <title>Void!Time_Trio 極秘開発IRS</title>
+  <title>【Void!Time_Trio】最悪の時間開発スレッド</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
+  <style>
+    body {background:#000;color:#0f0;font-family:"MS PGothic";margin:0;padding:10px;}
+    h1 {color:#f00;text-align:center;margin:10px;}
+    #log .post {margin:8px 0;padding-bottom:8px;border-bottom:1px dashed #333;}
+    .num {color:#0f0;}
+    .name {color:#0ff;font-weight:bold;}
+    .date {color:#888;font-size:0.8em;}
+    .input-area{position:fixed;bottom:0;left:0;right:0;background:#111;padding:10px;}
+    input,textarea,button{background:#000;color:#0f0;border:1px solid #0f0;font-family:"MS PGothic";}
+    textarea{width:100%;height:80px;}
+  </style>
+</head><body>
   <h1>【Void!Time_Trio】最悪の時間開発スレッド</h1>
   <div id="log"></div>
-  
+
   <div class="input-area">
-    <input type="text" id="name" placeholder="名無しさん" value="しゅう">
+    <input type="text" id="name" placeholder="名前" value="しゅう">
     <textarea id="msg" placeholder="進捗どうですか"></textarea>
     <button onclick="post()">書き込む</button>
   </div>
 
-  <script src="script.js"></script>
-</body>
-</html>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://yxaxgnnlfswbdilibeux.supabase.co';  // ←ここ変更
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4YXhnbm5sZnN3YmRpbGliZXV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMDU5MjAsImV4cCI6MjA4MDY4MTkyMH0.ND2rEWS8ejk2rqOJYmvdYVGxZ3qd5Hm3uU5mYerSc3I';                       // ←ここ変更
+    
+    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 初期読み込み
+    async function load() {
+      const { data } = await supabase.from('posts').select().order('id');
+      data.forEach(addPost);
+    }
+
+    // 新着監視（リアルタイム！）
+    supabase.channel('posts')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, payload => {
+        addPost(payload.new);
+      })
+      .subscribe();
+
+    // 投稿
+    async function post() {
+      const name = document.getElementById("name").value || "名無しさん";
+      const msg = document.getElementById("msg").value.trim();
+      if (!msg) return;
+      
+      await supabase.from('posts').insert({ name, message: msg });
+      document.getElementById("msg").value = "";
+    }
+
+    // 画面に追加
+    function addPost(p) {
+      const div = document.createElement("div");
+      div.className = "post";
+      div.innerHTML = `<span class="num">${p.id}</span> 名前：<span class="name">${p.name}</span> <span class="date">${new Date(p.created_at).toLocaleString()}</span><br>${p.message.replace(/\n/g, "<br>")}`;
+      document.getElementById("log").appendChild(div);
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    load();
+  </script>
+</body></html>
